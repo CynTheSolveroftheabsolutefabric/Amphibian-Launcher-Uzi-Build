@@ -928,6 +928,47 @@ function Launcher(
                                                                 </p>
                                                         </div>
                                                         <div class="doc-card">
+                                                                <h3>WHICH BROWSER</h3>
+                                                                <p>
+                                                                        Best performance: <b>Chrome or Edge</b>{" "}
+                                                                        (113+) on Windows or macOS — same engine,
+                                                                        equal speed, Edge is fully fine. Keep
+                                                                        hardware acceleration on{" "}
+                                                                        (<code>edge://settings/system</code>), turn
+                                                                        off Edge "Efficiency mode" while gaming, and
+                                                                        check <code>edge://gpu</code> /{" "}
+                                                                        <code>chrome://gpu</code>: the WebGPU row
+                                                                        should say <b>Hardware accelerated</b>.{" "}
+                                                                        <b>Firefox 141+</b> on Windows works too.
+                                                                        Mobile browsers, Safari and most
+                                                                        Chromebooks are not supported or only get a
+                                                                        software GPU. The Console's{" "}
+                                                                        <code>[gpu:game]</code> line always tells you
+                                                                        which kind of adapter you got.
+                                                                </p>
+                                                        </div>
+                                                        <div class="doc-card">
+                                                                <h3>PERFORMANCE &amp; FPS</h3>
+                                                                <p>
+                                                                        The first launch of a version starts with
+                                                                        settings tuned for the browser renderer
+                                                                        (render distance, simulation distance, fast
+                                                                        graphics, fewer particles, no entity shadows)
+                                                                        — stricter when the browser only offers a
+                                                                        software GPU. This is one-shot: change
+                                                                        anything later in-game under{" "}
+                                                                        <b>Options &gt; Video Settings</b> and it
+                                                                        sticks. Still slow? Make sure hardware
+                                                                        acceleration is on (chrome://settings/system),
+                                                                        check <code>chrome://gpu</code>, update your
+                                                                        GPU drivers, close other tabs, and add{" "}
+                                                                        <code>?perf=0</code> to the URL to keep the
+                                                                        launcher from ever touching settings. Power
+                                                                        users: <code>?wj.IKVM_GAME_OPTIONS=key:value,...</code>{" "}
+                                                                        overrides any option.
+                                                                </p>
+                                                        </div>
+                                                        <div class="doc-card">
                                                                 <h3>ACCOUNTS</h3>
                                                                 <p>
                                                                         A Microsoft account that owns Minecraft: Java Edition is needed for online
@@ -1647,42 +1688,42 @@ Launcher.style = css`
                 );
         }
         .hero-img {
-        	position: absolute;
-        	inset: 0;
-        	width: 100%;
-        	height: 100%;
-        	object-fit: cover;
-        	opacity: 0;
-        	/* Wallpaper crossfade: each image fades in, holds ~13.5s, fades out, and the next one
-        	   takes over. Loop = image count * 15s (7 * 15 = 105s); adjust if you add/remove
-        	   files. Opacity-only animation = compositor work, zero layout cost. */
-        	animation: wallpaper-cycle 105s infinite;
-        	animation-delay: calc(var(--wp-i, 0) * 15s);
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                opacity: 0;
+                /* Wallpaper crossfade: each image fades in, holds ~13.5s, fades out, and the next one
+                   takes over. Loop = image count * 15s (7 * 15 = 105s); adjust if you add/remove
+                   files. Opacity-only animation = compositor work, zero layout cost. */
+                animation: wallpaper-cycle 105s infinite;
+                animation-delay: calc(var(--wp-i, 0) * 15s);
         }
         @keyframes wallpaper-cycle {
-        	0% {
-        		opacity: 0;
-        	}
-        	1.43% {
-        		opacity: 1;
-        	}
-        	12.86% {
-        		opacity: 1;
-        	}
-        	14.29% {
-        		opacity: 0;
-        	}
-        	100% {
-        		opacity: 0;
-        	}
+                0% {
+                        opacity: 0;
+                }
+                1.43% {
+                        opacity: 1;
+                }
+                12.86% {
+                        opacity: 1;
+                }
+                14.29% {
+                        opacity: 0;
+                }
+                100% {
+                        opacity: 0;
+                }
         }
         @media (prefers-reduced-motion: reduce) {
-        	.hero-img {
-        		animation: none;
-        	}
-        	.hero-img:first-child {
-        		opacity: 1;
-        	}
+                .hero-img {
+                        animation: none;
+                }
+                .hero-img:first-child {
+                        opacity: 1;
+                }
         }        .game-title {
                 position: relative;
                 z-index: 2;

@@ -78,6 +78,56 @@ If the game freezes, press STOP GAME in the CONSOLE tab (or just close the game 
 
 If the game stops with an error, a red message appears in the CONSOLE tab with the exit code, and the log shows what happened.
 
+### Which browser to use
+
+The game needs a **WebGPU-capable desktop browser**. Best performance, in order:
+
+1. **Chrome or Edge (113 or newer) on Windows** — the standard choice. They share the same engine,
+   so performance is equal; pick whichever you keep updated. If you are on Edge, that is completely
+   fine. Turn off "Efficiency mode" while gaming (edge://settings/system), plug the laptop in, and
+   make sure **hardware acceleration** is on: edge://settings/system for Edge,
+   chrome://settings/system for Chrome. You can check what the browser actually gives the game at
+   `edge://gpu` / `chrome://gpu` — the "WebGPU" row should say **Hardware accelerated**. The
+   launcher also prints its own probe line, `[gpu:game] ...`, in the Console tab.
+2. **Chrome or Edge on macOS and on Linux with working GPU drivers** — equally good when
+   `chrome://gpu` shows hardware WebGPU.
+3. **Firefox 141 or newer on Windows** — works, WebGPU there is Windows-only for now and generally
+   a bit behind Chromium in speed for this game.
+
+Not recommended / not working:
+
+- **Mobile browsers** (Android or iOS) — the runtime needs desktop-class WebAssembly and a large
+  memory budget that phones do not provide.
+- **Safari** — WebGPU support is too new and the game's runtime is not supported there.
+- **Chromebooks** — many only expose a software WebGPU, which means single-digit FPS no matter
+  what settings you use (see the `[gpu:game]` line in the Console).
+
+Whatever browser you pick: keep it updated, update your GPU drivers, and close other heavy tabs
+while playing. The Console tab's `[gpu:game]` line tells you in one glance whether you got a
+hardware or a software adapter.
+
+### Performance and FPS
+
+The game renders through a GL-on-WebGPU translation stack, which is much heavier than native
+Minecraft, so vanilla's default video settings can land you at single-digit FPS — especially on
+multiplayer servers. To avoid that first impression, the launcher applies tuned settings
+(render distance 5–8, simulation distance, fast graphics, minimal particles, no entity shadows) to
+`options.txt` exactly once, on the very first launch of the game in a browser profile. How strict
+they are depends on what WebGPU adapter the browser offers: a software adapter (SwiftShader,
+llvmpipe — hardware acceleration off, blocklisted drivers, many Chromebooks, VMs) gets the strict
+set, and the Console log prints a `[gpu:game]` line plus a `[perf]` line showing exactly what was
+applied.
+
+After that first launch the launcher never touches your settings again — change everything in-game
+under Options > Video Settings (or edit `minecraft/options.txt` in the File Manager). Escape
+hatches: `?perf=0` disables the auto defaults entirely, `?perf=1` re-applies them on the next
+launch, and `?wj.IKVM_GAME_OPTIONS=renderDistance:12,...` overrides the preset with your own lines.
+
+If FPS is still low with a hardware adapter in the `[gpu:game]` line, the usual fixes apply:
+hardware acceleration on (chrome://settings/system), current GPU drivers, few other tabs open.
+Note that the game log always shows its device as "(Mesa)" — that is the game's own GL layer, not
+a sign that your GPU is unused; the `[gpu:game]` line is the one that tells the truth.
+
 ### Changing the wallpapers
 
 The background pictures are in `frontend/public/backgrounds`. To use your own, put an image there (wide screenshots work best, around 1920 pixels across) and add its file name to the `BACKGROUNDS` list near the top of the launcher code in `frontend/src/main.tsx`. With more than one picture, the launcher fades between them every few seconds.
@@ -118,6 +168,8 @@ repository does not ship its built `dist/` files (and its build script never run
 - `?netlog=1` on either page turns per-packet network tracing back on. It is off by default because
   dumping every TCP chunk to the console (and mirroring it into the launcher log) is expensive
   enough on a multiplayer server to cost a large chunk of FPS.
+- `?perf=0` / `?perf=1` disable or force the first-launch performance defaults (see "Performance
+  and FPS" above); `?wj.IKVM_GAME_OPTIONS=key:value,...` overrides any game option before launch.
 - The Console tab keeps the thread dump / JIT dump / Stop game buttons; memory and FPS stats update
   there live while a game runs.
 

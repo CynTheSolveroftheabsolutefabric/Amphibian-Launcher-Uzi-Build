@@ -1,5 +1,12 @@
 import { loglisteners, type Log } from "./dotnet/log";
 import { bridgeName, type ToGame, type ToLauncher } from "./bridge";
+import { reportGpuAdapter } from "./gpu-info";
+
+// Prints what WebGPU adapter the browser actually offers. The game's own log shows "(Mesa)" either
+// way (its GL layer is Mesa-in-WASM), so this probe is the only honest answer: if the browser hands
+// out a software adapter the game crawls at single-digit FPS, and the log line + the launcher's
+// first-launch perf defaults (perf.ts) both react to it.
+void reportGpuAdapter("game");
 
 // The game page. It shows Minecraft and nothing else: the canvas fills the whole tab. Everything the launcher used to
 // show around the game (logs, stats, thread dump, mods) lives in the launcher now, and this page reports to it over

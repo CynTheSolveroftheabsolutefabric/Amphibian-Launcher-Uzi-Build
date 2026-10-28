@@ -15,24 +15,98 @@ const netlog = (...args: any[]) => {
         if (NETLOG) console.log(...args);
 };
 
-// The Wisp server epoxy tunnels TCP/TLS through. Under the vite dev server that is the server itself (the
-// `local-wisp` plugin in vite.config.ts); a static production build has no such endpoint and keeps the
-// public one below. Hosting your own (see wisp-server/README.md -- it auto-deploys with the repo) and
-// making it the default = change PROD_WISP_URL. Per-visit override: `?wisp=<url>` always wins.
-const PROD_WISP_URL = "wss://anura.pro/";
+// The Wisp server(s) epoxy tunnels TCP/TLS through. Under the vite dev server that is the server
+// itself (the `local-wisp` plugin in vite.config.ts); a static production build has none and uses the
+// public candidates below. Measured reality (2026-10): BOTH public servers have bad hours -- anura.pro
+// saturates at peak time (first-launch asset downloads stalled 30s+ for real users), while
+// mercurywork.shop throttles some networks hard. So production probes all candidates on startup and
+// keeps the fastest responder for the whole session; if the default is down, the other one takes over
+// automatically. Hosting your own (see wisp-server/README.md) beats both: list it as the first
+// candidate / or force it per-visit with `?wisp=<url>`, which skips probing entirely.
+const PROD_WISP_CANDIDATES = ["wss://wisp.mercurywork.shop/", "wss://anura.pro/"];
+// A tiny, stable, CORS-enabled file (7 KB asset object) used to time each candidate.
+const WISP_PROBE_URL = "https://resources.download.minecraft.net/79/7938494a1174a99d39cdcb0da28aaa06c562df0d";
+const WISP_PROBE_TIMEOUT_MS = 8_000;
 function wispUrl(): string {
         const override = new URLSearchParams(location.search).get("wisp");
         if (override) return override;
         if (import.meta.env.DEV) return `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/wisp/`;
-        return PROD_WISP_URL;
+        return PROD_WISP_CANDIDATES[0];
+}
+
+// Downloads (assets/libraries/jars) are spread across several wisp connections. All streams on one
+// WebSocket share a single TCP connection: one dropped WiFi packet there stalls EVERY in-flight
+// download on it for up to the idle timeout (TCP head-of-line blocking) -- the classic "launcher sits
+// silent for a minute" symptom. Three connections cut the blast radius of a stall to a third of the
+// queue and triple the per-connection flow-control ceiling. Game TCP/TLS sockets (EpxTcpWs, auth)
+// ride the primary `client`; on auto-selection the primary itself is rebuilt before any game traffic
+// exists, so gameplay always ends up on the probed winner too.
+const DOWNLOAD_CLIENT_COUNT = 3;
+export let downloadClients: EpoxyClient[] = [];
+let downloadClientIndex = 0;
+
+export function nextDownloadClient(): EpoxyClient {
+        const pool = downloadClients.length > 0 ? downloadClients : [client];
+        downloadClientIndex = (downloadClientIndex + 1) % pool.length;
+        return pool[downloadClientIndex];
+}
+
+function makeWispClient(url: string): EpoxyClient {
+        return new EpoxyClient(new WispSocketProvider(new WebSocketJsProvider(), url));
+}
+
+function buildPool(url: string): EpoxyClient[] {
+        return Array.from({ length: DOWNLOAD_CLIENT_COUNT }, () => makeWispClient(url));
+}
+
+// Times one candidate with a throwaway client. Returns null on any failure/timeout.
+async function probeWisp(url: string): Promise<number | null> {
+        try {
+                const probe = makeWispClient(url);
+                const result = await Promise.race([
+                        probe.fetch(WISP_PROBE_URL).then(async (res) => {
+                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                await res.arrayBuffer();
+                                return true;
+                        }),
+                        new Promise<never>((_, reject) =>
+                                setTimeout(() => reject(new Error("probe timeout")), WISP_PROBE_TIMEOUT_MS)),
+                ]);
+                void result;
+                return performance.now();
+        } catch {
+                return null;
+        }
+}
+
+async function selectWispServer(): Promise<void> {
+        const started = performance.now();
+        const times = await Promise.all(PROD_WISP_CANDIDATES.map(probeWisp));
+        const winner = times.reduce<number>(
+                (best, time, index) => (time !== null && (best === -1 || time < times[best]!) ? index : best),
+                -1,
+        );
+        if (winner === -1) return; // every candidate failed; stay on the initial pool
+        const chosen = PROD_WISP_CANDIDATES[winner];
+        netlog("wisp probe", PROD_WISP_CANDIDATES.map(
+                (url, index) => `${new URL(url).hostname}=${times[index] === null ? "fail" : `${(times[index]! - started).toFixed(0)}ms`}`,
+        ));
+        if (chosen === wispUrl()) return; // default already fastest; pool is already spread on it
+        downloadClients = buildPool(chosen);
+        client = downloadClients[0]!;
+        (globalThis as any).client = client;
+        console.info(`[net] wisp: auto-selected ${new URL(chosen).hostname} (probe: ${PROD_WISP_CANDIDATES.map((u, i) => `${new URL(u).hostname} ${times[i] === null ? "failed" : `${(times[i]! - started).toFixed(0)}ms`}`).join(", ")})`);
 }
 
 export function createClient() {
         const url = wispUrl();
         netlog("wisp server", url);
-        let wisp = new WispSocketProvider(new WebSocketJsProvider(), url);
-        client = new EpoxyClient(wisp);
+        client = makeWispClient(url);
+        downloadClients = [client, ...buildPool(url).slice(1)];
         (globalThis as any).client = client;
+        // Auto-select only for the production defaults (no explicit override, not the dev server).
+        const overridden = new URLSearchParams(location.search).has("wisp");
+        if (!import.meta.env.DEV && !overridden) void selectWispServer();
 }
 
 createClient();
