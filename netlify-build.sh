@@ -19,4 +19,10 @@ dotnet --info | head -n 20
 
 (cd loader && dotnet workload restore)
 
+# Netlify only auto-installs dependencies for a package.json at the base directory (the repo root), and the
+# frontend lives in its own subdirectory, so install it here (mirrors the Pages workflow). Without this,
+# `pnpm build` fails with "tsc: not found".
+echo "[netlify] installing frontend dependencies"
+(cd frontend && pnpm install --frozen-lockfile)
+
 make publish "$@"
