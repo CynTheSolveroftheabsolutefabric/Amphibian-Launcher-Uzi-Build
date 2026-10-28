@@ -2,6 +2,10 @@
 
 DOTNET_ROOT="$(dirname "$(readlink -f "$(command -v dotnet)")")"
 REF_DIR="$(ls -d "$DOTNET_ROOT"/packs/Microsoft.NETCore.App.Ref/*/ref/net10.0 2>/dev/null | sort -V | tail -1)"
+if [ -z "$REF_DIR" ]; then
+	echo "[ikvmc] no net10.0 reference pack found under '$DOTNET_ROOT/packs/Microsoft.NETCore.App.Ref' - install the .NET 10 SDK" >&2
+	exit 1
+fi
 CORLIB_DLL_IMPORTS=$(find "$REF_DIR" -type f -name '*.dll' -exec printf -- '-r %s ' {} +)
 
 OUTPUT="$1"
