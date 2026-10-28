@@ -16,13 +16,15 @@ const netlog = (...args: any[]) => {
 };
 
 // The Wisp server epoxy tunnels TCP/TLS through. Under the vite dev server that is the server itself (the
-// `local-wisp` plugin in vite.config.ts); a static production build has no such endpoint and keeps the public one.
-// `?wisp=<url>` overrides either, e.g. `?wisp=wss://anura.pro/` to compare against the external proxy.
+// `local-wisp` plugin in vite.config.ts); a static production build has no such endpoint and keeps the
+// public one below. Hosting your own (see wisp-server/README.md -- it auto-deploys with the repo) and
+// making it the default = change PROD_WISP_URL. Per-visit override: `?wisp=<url>` always wins.
+const PROD_WISP_URL = "wss://anura.pro/";
 function wispUrl(): string {
         const override = new URLSearchParams(location.search).get("wisp");
         if (override) return override;
         if (import.meta.env.DEV) return `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/wisp/`;
-        return "wss://anura.pro/";
+        return PROD_WISP_URL;
 }
 
 export function createClient() {

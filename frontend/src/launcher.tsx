@@ -41,6 +41,19 @@ import iconChevronUp from "@ktibow/iconset-material-symbols/keyboard-arrow-up";
 import iconDelete from "@ktibow/iconset-material-symbols/delete";
 import iconSave from "@ktibow/iconset-material-symbols/save";
 
+// Play-tab wallpapers, crossfaded by pure CSS (see @keyframes wallpaper-cycle) — no timers, no
+// framework state, nothing to clean up. Sorted by filename: 1.webp shows first, then the next
+// one every 15s. The CSS loop length must stay imageCount * 15s (currently 7 * 15 = 105s).
+const WALLPAPER_URLS: string[] = Object.entries(
+        import.meta.glob<string>("./assets/wallpapers/*.webp", {
+                eager: true,
+                query: "?url",
+                import: "default",
+        })
+)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, url]) => url);
+
 // crypto.randomUUID only exists in secure contexts (https / localhost). A launcher served over plain http
 // (e.g. a LAN host) crashed with a TypeError the moment PLAY was pressed; fall back to a random hex id.
 const randomId = (): string => {
@@ -728,7 +741,9 @@ function Launcher(
                                         {/* ===== PLAY ===== */}
                                         <section class="view play-view" class:hidden={use(this.view).map((v) => v !== "play")}>
                                                 <div class="game-bg">
-                                                        <img class="hero-img" src="./backgrounds/jungle.jpg" alt="" />
+                                                        {WALLPAPER_URLS.map((url, i) => (
+                                                                <img class="hero-img" style={`--wp-i: ${i}`} src={url} alt="" />
+                                                        ))}
                                                         <div class="game-title">
                                                                 <img class="hero-logo" src="./logo.png" alt="Amphibian Launcher" />
                                                         </div>
@@ -1632,13 +1647,43 @@ Launcher.style = css`
                 );
         }
         .hero-img {
-                position: absolute;
-                inset: 0;
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
+        	position: absolute;
+        	inset: 0;
+        	width: 100%;
+        	height: 100%;
+        	object-fit: cover;
+        	opacity: 0;
+        	/* Wallpaper crossfade: each image fades in, holds ~13.5s, fades out, and the next one
+        	   takes over. Loop = image count * 15s (7 * 15 = 105s); adjust if you add/remove
+        	   files. Opacity-only animation = compositor work, zero layout cost. */
+        	animation: wallpaper-cycle 105s infinite;
+        	animation-delay: calc(var(--wp-i, 0) * 15s);
         }
-        .game-title {
+        @keyframes wallpaper-cycle {
+        	0% {
+        		opacity: 0;
+        	}
+        	1.43% {
+        		opacity: 1;
+        	}
+        	12.86% {
+        		opacity: 1;
+        	}
+        	14.29% {
+        		opacity: 0;
+        	}
+        	100% {
+        		opacity: 0;
+        	}
+        }
+        @media (prefers-reduced-motion: reduce) {
+        	.hero-img {
+        		animation: none;
+        	}
+        	.hero-img:first-child {
+        		opacity: 1;
+        	}
+        }        .game-title {
                 position: relative;
                 z-index: 2;
                 margin-top: 9vh;
