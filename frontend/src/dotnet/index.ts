@@ -218,7 +218,13 @@ export async function initDotnet(canvas: HTMLCanvasElement) {
                 })
                 .withEnvironmentVariable("WINK_GL_MAIN", winkGlMain ? "1" : "0")
                 .withEnvironmentVariable("GEX_WGSL_CACHE", "0")
-                .withEnvironmentVariable("MONO_SLEEP_ABORT_LIMIT", "20000")
+                // How long a GC stop-the-world waits for every thread to reach a safepoint before Mono aborts the whole
+                // runtime ("suspend_thread suspend took N ms, which is more than the allowed N ms"). Threads here are
+                // suspended cooperatively, so one stuck waiting on the browser (most often the main thread while the game
+                // tab is in the background, where the browser throttles or pauses it) stalls the GC instead of the GC
+                // interrupting it. Aborting turned that stall into a crash that closed the game tab; with a limit this
+                // high the game just pauses and carries on once the thread comes back.
+                .withEnvironmentVariable("MONO_SLEEP_ABORT_LIMIT", "2000000000")
                 .withEnvironmentVariable(
                         "MONO_GC_PARAMS",
                         "nursery-size=64m,tlab-size=64k,max-heap-size=2560m,default-allowance-ratio=2.0,major=marksweep-conc-par,minor=simple-par"

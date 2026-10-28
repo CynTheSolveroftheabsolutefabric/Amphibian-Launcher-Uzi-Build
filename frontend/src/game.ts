@@ -26,6 +26,8 @@ setInterval(() => {
 }, 100);
 addEventListener("error", (e) => console.error("[game] uncaught error:", e.message));
 addEventListener("unhandledrejection", (e) => console.error("[game] unhandled rejection:", String(e.reason)));
+// Browsers throttle or pause background tabs, which can stall the runtime's threads, so the log records when that happens.
+document.addEventListener("visibilitychange", () => console.info(`[game] tab ${document.visibilityState}`));
 
 // Page: one full-size canvas. The wrapper keeps the "canvas" class because the runtime resizes the canvas to follow
 // the element matching ".canvas" (see glfwMakeCanvasResizable in dotnet/index.ts).
