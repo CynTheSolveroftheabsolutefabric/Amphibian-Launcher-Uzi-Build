@@ -1,0 +1,96 @@
+/* Modded-Web global theme.
+   Dark palette borrowed from the classic official-launcher look (deep grey surfaces,
+   green accent, white/#ccc text). Defines every CSS variable the shared components
+   (ui/Button, fs.tsx, launcher) expect, so they all restyle at once. */
+
+@font-face {
+	font-family: "Silkscreen";
+	font-style: normal;
+	font-weight: 400;
+	src: url("./fonts/silkscreen-400.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Silkscreen";
+	font-style: normal;
+	font-weight: 700;
+	src: url("./fonts/silkscreen-700.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Noto Sans";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/notosans-latin.woff2") format("woff2");
+}
+
+:root {
+	--bg: #1e1e1e;
+	--bg-bar: #161616;
+	--bg-sub: #131313;
+	--accent: #008542;
+	--mc-green: #008542;
+	--mc-green-bright: #00b45a;
+	--mc-green-hover: #00a352;
+	--mc-red: #ff5555;
+	--mc-yellow: #ffff55;
+
+	--fg: #ffffff;
+	--fg-dim: #cccccc;
+	--fg3: #b9b9b9;
+	--fg4: #9a9a9a;
+	--fg5: #767676;
+	--fg6: #585858;
+
+	--surface0: #242424;
+	--surface1: #2a2a2a;
+	--surface2: #2f2f2f;
+	--surface3: #353535;
+	--surface4: #3e3e3e;
+	--surface5: #4a4a4a;
+	--surface6: #5c5c5c;
+
+	--line: #353535;
+	--line-soft: #2a2a2a;
+
+	--font-body: "Noto Sans", system-ui, -apple-system, sans-serif;
+	--font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+	--font-pixel: "Silkscreen", var(--font-body);
+	--font-display: var(--font-pixel);
+}
+
+html,
+body,
+#app {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	overflow: hidden;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-body);
+	line-height: 1.5;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+code,
+pre,
+textarea,
+.log {
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--surface5);
+	border-radius: 5px;
+}

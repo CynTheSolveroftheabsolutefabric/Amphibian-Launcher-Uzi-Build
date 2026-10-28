@@ -1,0 +1,93 @@
+/* == bundled fonts (no runtime CDN dependency) ========================================= */
+
+@font-face {
+        font-family: "Silkscreen";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("./fonts/silkscreen-400.woff2") format("woff2");
+}
+@font-face {
+        font-family: "Silkscreen";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url("./fonts/silkscreen-700.woff2") format("woff2");
+}
+@font-face {
+        font-family: "Noto Sans";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url("./fonts/notosans-latin.woff2") format("woff2");
+}
+
+html,
+body {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+}
+
+* {
+        box-sizing: border-box;
+}
+
+:root {
+        --font-body:
+                "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+        --font-display: var(--font-body);
+        --font-pixel: "Silkscreen", "Pixelify Sans", monospace;
+        --font-mono:
+                ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                "Liberation Mono", "Courier New", monospace;
+
+        color-scheme: dark;
+
+        /* Official Minecraft launcher palette */
+        --mc-green: #3c8527;
+        --mc-green-bright: #5ea83f;
+        --mc-green-hover: #47a02f;
+        --mc-green-dark: #2c6420;
+        --mc-yellow: #ffff55;
+        --mc-red: #ff5555;
+
+        --bg: #17181a;
+        --bg-sub: #101113;
+        --bg-bar: rgba(15, 16, 18, 0.92);
+        --surface0: #1b1c1f;
+        --surface1: #212226;
+        --surface2: #26272b;
+        --surface3: #2b2c31;
+        --surface4: #313237;
+        --surface5: #3a3b41;
+        --surface6: #43454b;
+
+        --fg: #ffffff;
+        --fg2: #e8e9eb;
+        --fg3: #c9cbcf;
+        --fg4: #a6a8ad;
+        --fg5: #8b8d93;
+        --fg6: #6f7176;
+
+        --line: #3a3b40;
+        --line-soft: #2e2f34;
+
+        --accent: var(--mc-green);
+        --loader-bg: #153a20;
+        --error: var(--mc-red);
+        --success: #84f084;
+        --warning: var(--mc-yellow);
+        --info: #b2c2f8;
+
+        font-family: var(--font-body);
+        accent-color: var(--accent);
+        scrollbar-color: var(--surface5) transparent;
+}
+
+h1,h2,h3,h4,h5 {
+        font-family: var(--font-display);
+}

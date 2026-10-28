@@ -1,0 +1,4 @@
+allowBuilds:
+  bufferutil: false
+  # dreamland is vendored prebuilt (vendor/dreamland-0.1.3.tgz); it has no build scripts to run.
+  esbuild: false
