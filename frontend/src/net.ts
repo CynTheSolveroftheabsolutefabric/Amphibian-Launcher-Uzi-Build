@@ -51,6 +51,78 @@ export function nextDownloadClient(): EpoxyClient {
         return pool[downloadClientIndex];
 }
 
+// ---- mid-download failover -------------------------------------------------
+// The startup probe picks a winner, but public wisp servers degrade in waves: one wedged TCP
+// tunnel stalls every stream multiplexed onto it, the game's downloader burns its 4 attempts,
+// and the launch fails -- even though the OTHER server (or just fresh sockets) would work.
+// minecraft.ts reports every non-HTTP download error here; once a few pile up within a short
+// window the pool is rebuilt -- on the best candidate after a fresh probe, or on the current
+// server with brand-new sockets when every candidate is unreachable. Forced ?wisp= is honored:
+// it only rebuilds there, never switches away. Old clients are not force-closed (in-flight
+// responses keep their streams); they get garbage collected once their downloads settle.
+const DOWNLOAD_FAILOVER_THRESHOLD = 4;
+const DOWNLOAD_FAILOVER_COOLDOWN_MS = 30_000;
+let downloadFailures = 0;
+let lastFailoverAt = 0;
+let failoverInFlight: Promise<void> | null = null;
+
+// Test seam: the runner noteDownloadFailure() triggers. Swapped in Node tests so failover can be
+// asserted without live-network probes.
+export let failoverHook: () => Promise<void> = () => failoverWisp();
+export function setFailoverHook(fn: () => Promise<void>): void {
+        failoverHook = fn;
+}
+
+export function noteDownloadFailure(): void {
+        if (import.meta.env.DEV) return; // dev rides the vite local-wisp/proxy; nothing to fail over
+        downloadFailures += 1;
+        if (downloadFailures < DOWNLOAD_FAILOVER_THRESHOLD) return;
+        downloadFailures = 0;
+        const now = Date.now();
+        if (now - lastFailoverAt < DOWNLOAD_FAILOVER_COOLDOWN_MS) return;
+        lastFailoverAt = now;
+        if (!failoverInFlight) {
+                failoverInFlight = failoverHook().finally(() => {
+                        failoverInFlight = null;
+                });
+        }
+}
+
+function applyPool(url: string): void {
+        downloadClients = buildPool(url);
+        downloadClientIndex = 0;
+        client = downloadClients[0]!;
+        (globalThis as any).client = client;
+}
+
+export async function failoverWisp(): Promise<void> {
+        try {
+                const override = new URLSearchParams(location.search).get("wisp");
+                if (override) {
+                        console.warn(`[net] wisp: repeated download failures — rebuilding fresh connections on ${new URL(override).hostname}`);
+                        applyPool(override);
+                        return;
+                }
+                const started = performance.now();
+                const times = await Promise.all(PROD_WISP_CANDIDATES.map(probeWisp));
+                const winner = times.reduce<number>(
+                        (best, time, index) => (time !== null && (best === -1 || time < times[best]!) ? index : best),
+                        -1,
+                );
+                const probeLine = () => PROD_WISP_CANDIDATES.map((u, i) => `${new URL(u).hostname} ${times[i] === null ? "failed" : `${(times[i]! - started).toFixed(0)}ms`}`).join(", ");
+                if (winner === -1) {
+                        console.warn(`[net] wisp: repeated download failures but every candidate failed the probe — rebuilding fresh connections on ${new URL(wispUrl()).hostname}`);
+                        applyPool(wispUrl());
+                        return;
+                }
+                const chosen = PROD_WISP_CANDIDATES[winner];
+                console.warn(`[net] wisp: repeated download failures — failing over to ${new URL(chosen).hostname} (probe: ${probeLine()})`);
+                applyPool(chosen);
+        } catch (error) {
+                console.warn("[net] wisp: failover attempt errored, keeping current pool", error);
+        }
+}
+
 function makeWispClient(url: string): EpoxyClient {
         return new EpoxyClient(new WispSocketProvider(new WebSocketJsProvider(), url));
 }
@@ -86,16 +158,20 @@ async function selectWispServer(): Promise<void> {
                 (best, time, index) => (time !== null && (best === -1 || time < times[best]!) ? index : best),
                 -1,
         );
-        if (winner === -1) return; // every candidate failed; stay on the initial pool
+        const probeLine = () => PROD_WISP_CANDIDATES.map((u, i) => `${new URL(u).hostname} ${times[i] === null ? "failed" : `${(times[i]! - started).toFixed(0)}ms`}`).join(", ");
+        if (winner === -1) {
+                // every candidate failed; stay on the initial pool. Failover (noteDownloadFailure)
+                // re-probes later once real download errors accumulate.
+                console.warn(`[net] wisp: startup probe — all candidates failed (${probeLine()}), staying on ${new URL(wispUrl()).hostname}`);
+                return;
+        }
         const chosen = PROD_WISP_CANDIDATES[winner];
-        netlog("wisp probe", PROD_WISP_CANDIDATES.map(
-                (url, index) => `${new URL(url).hostname}=${times[index] === null ? "fail" : `${(times[index]! - started).toFixed(0)}ms`}`,
-        ));
-        if (chosen === wispUrl()) return; // default already fastest; pool is already spread on it
-        downloadClients = buildPool(chosen);
-        client = downloadClients[0]!;
-        (globalThis as any).client = client;
-        console.info(`[net] wisp: auto-selected ${new URL(chosen).hostname} (probe: ${PROD_WISP_CANDIDATES.map((u, i) => `${new URL(u).hostname} ${times[i] === null ? "failed" : `${(times[i]! - started).toFixed(0)}ms`}`).join(", ")})`);
+        if (chosen === wispUrl()) {
+                console.info(`[net] wisp: probe confirms default ${new URL(chosen).hostname} is fastest (${probeLine()})`);
+                return;
+        }
+        applyPool(chosen);
+        console.info(`[net] wisp: auto-selected ${new URL(chosen).hostname} (${probeLine()})`);
 }
 
 export function createClient() {

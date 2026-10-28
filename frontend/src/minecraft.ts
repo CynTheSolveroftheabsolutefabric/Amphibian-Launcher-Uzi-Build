@@ -1,6 +1,6 @@
 import { console_debug } from "./dotnet/log";
 import { opfsInvalidate } from "./opfs";
-import { nextDownloadClient } from "./net";
+import { nextDownloadClient, noteDownloadFailure } from "./net";
 
 const DEFAULT_PRISM_META_BASE_URL = "https://meta.prismlauncher.org/v1/";
 const DEFAULT_MOJANG_VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
@@ -282,6 +282,12 @@ async function fetchArrayBufferAttempt(
         let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
         let timer: ReturnType<typeof setTimeout>;
         let rejectTimeout: (error: Error) => void;
+        // Cross-origin attempts ride the wisp pool in production (downloadFetch). If such an attempt
+        // dies outside HTTP semantics -- idle timeout, aborted stream, incomplete body -- the proxy
+        // tunnel is suspect: report it so net.ts can rebuild the pool or fail over to another server
+        // while the downloader still has retry attempts left. Plain HTTP status errors mean the server
+        // answered, so the tunnel is fine and they are not reported.
+        const crossOrigin = new URL(url, location.href).origin !== location.origin;
         const timeout = new Promise<never>((_, reject) => { rejectTimeout = reject; });
         const resetTimeout = () => {
                 clearTimeout(timer);
@@ -337,6 +343,7 @@ async function fetchArrayBufferAttempt(
         } catch (error) {
                 controller.abort(error);
                 void reader?.cancel(error).catch(() => {});
+                if (crossOrigin && !(error instanceof DownloadHttpError)) noteDownloadFailure();
                 throw error;
         } finally {
                 clearTimeout(timer!);
